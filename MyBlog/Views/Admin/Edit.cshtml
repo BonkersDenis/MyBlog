@@ -1,0 +1,27 @@
+﻿@model MyBlog.Models.Article
+
+<h1>Редактировать статью</h1>
+
+<form action="/Admin/Edit" method="post">
+    <input type="hidden" name="Id" value="@Model.Id">
+
+    <div>
+        <label>Заголовок:</label><br>
+        <input type="text" name="Title" value="@Model.Title" style="width: 300px;" required>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label>Краткое описание:</label><br>
+        <textarea name="Excerpt" rows="3" style="width: 300px;">@Model.Excerpt</textarea>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label>Текст статьи:</label><br>
+        <textarea name="Content" rows="10" style="width: 300px;" required>@Model.Content</textarea>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <button type="submit">Сохранить</button>
+        <a href="/Admin" style="margin-left: 10px;">Отмена</a>
+    </div>
+</form>

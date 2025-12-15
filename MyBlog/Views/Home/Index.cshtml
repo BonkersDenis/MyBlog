@@ -1,0 +1,23 @@
+﻿@model List<MyBlog.Models.Article>
+
+<h1>Мой блог</h1>
+
+@if (Model == null || Model.Count == 0)
+{
+    <p>Пока нет статей.</p>
+}
+else
+{
+    <ul>
+        @foreach (var article in Model)
+        {
+            <li>
+                <h3>
+                    <a href="/Home/Article/@article.Id">@article.Title</a>
+                </h3>
+                <small>Опубликовано: @article.PublishDate.ToString("dd.MM.yyyy")</small>
+                <p>@(article.Excerpt ?? article.Content.Substring(0, Math.Min(100, article.Content.Length)))...</p>
+            </li>
+        }
+    </ul>
+}

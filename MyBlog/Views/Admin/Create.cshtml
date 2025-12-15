@@ -1,0 +1,23 @@
+﻿<h1>Создать статью</h1>
+
+<form action="/Admin/Create" method="post">
+    <div>
+        <label>Заголовок:</label><br>
+        <input type="text" name="Title" style="width: 300px;" required>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label>Краткое описание:</label><br>
+        <textarea name="Excerpt" rows="3" style="width: 300px;"></textarea>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label>Текст статьи:</label><br>
+        <textarea name="Content" rows="10" style="width: 300px;" required></textarea>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <button type="submit">Создать</button>
+        <a href="/Admin" style="margin-left: 10px;">Отмена</a>
+    </div>
+</form>
