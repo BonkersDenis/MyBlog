@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MyBlog.Models;
+using Microsoft.EntityFrameworkCore;
+using MyBlog.Data;
 
 namespace MyBlog.Controllers;
 
@@ -20,65 +22,71 @@ namespace MyBlog.Controllers;
 
 public class AdminController : Controller
 {
-    // Используем тот же список статей, что и в HomeController
-    private List<Article> _articles;
+    private readonly ApplicationDbContext _context;
 
-    public AdminController()
+    public AdminController(ApplicationDbContext context)
     {
-        // Получаем ссылку на общий список статей из HomeController
-        _articles = HomeController.GetArticles();
+        _context = context;
     }
 
-    // Главная страница админ-панели - список всех статей
-    public IActionResult Index()
+    // GET: Admin
+    /// <summary>
+    /// Основная страница административной панели - отображает список всех статей
+    /// </summary>
+    /// <returns></returns>
+    public async Task<IActionResult> Index()
     {
-        var articles = _articles
+        var articles = await _context.Articles
             .OrderByDescending(a => a.PublishDate)
-            .ToList();
+            .ToListAsync();
 
         return View(articles);
     }
 
-    // GET: Форма для создания новой статьи
-    [HttpGet]
+    // GET: Admin/Create
+    /// <summary>
+    /// Метод для отображения формы создания новой статьи
+    /// </summary>
+    /// <returns></returns>
     public IActionResult Create()
     {
         return View();
     }
 
-    // POST: Создание новой статьи
+    // POST: Admin/Create
+    /// <summary>
+    /// Метод для обработки данных из формы создания статьи
+    /// </summary>
+    /// <param name="article"></param>
+    /// <returns></returns>
     [HttpPost]
-    public IActionResult Create(Article article)
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(Article article)
     {
         if (ModelState.IsValid)
         {
-            // Генерируем новый ID
-            int newId = _articles.Count > 0 ? _articles.Max(a => a.Id) + 1 : 1;
-            article.Id = newId;
-
-            // Устанавливаем дату публикации
-            article.PublishDate = System.DateTime.Now;
-
-            // Добавляем статью в список
-            _articles.Add(article);
-
-            // Обновляем список в HomeController
-            HomeController.SetArticles(_articles);
-
-            // Перенаправляем на список статей
-            return RedirectToAction("Index");
+            _context.Add(article);
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
         }
 
-        // Если есть ошибки валидации, показываем форму снова
         return View(article);
     }
 
-    // GET: Форма для редактирования статьи
-    [HttpGet]
-    public IActionResult Edit(int id)
+    // GET: Admin/Edit/5
+    /// <summary>
+    /// Метод для отображения формы редактирования существующей статьи
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
+    public async Task<IActionResult> Edit(int? id)
     {
-        // Ищем статью по ID
-        var article = _articles.FirstOrDefault(a => a.Id == id);
+        if (id == null)
+        {
+            return NotFound();
+        }
+
+        var article = await _context.Articles.FindAsync(id);
 
         if (article == null)
         {
@@ -88,38 +96,61 @@ public class AdminController : Controller
         return View(article);
     }
 
-    // POST: Обновление статьи
+    // POST: Admin/Edit/5
+    /// <summary>
+    /// Метод для обработки данных из формы редактирования статьи
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="updatedArticle"></param>
+    /// <returns></returns>
     [HttpPost]
-    public IActionResult Edit(Article updatedArticle)
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(int id, Article updatedArticle)
     {
+        if (id != updatedArticle.Id)
+        {
+            return NotFound();
+        }
+
         if (ModelState.IsValid)
         {
-            // Ищем существующую статью
-            var article = _articles.FirstOrDefault(a => a.Id == updatedArticle.Id);
-
-            if (article == null)
+            try
             {
-                return NotFound();
+                _context.Update(updatedArticle);
+                await _context.SaveChangesAsync();
             }
-
-            // Обновляем поля статьи
-            article.Title = updatedArticle.Title;
-            article.Content = updatedArticle.Content;
-            article.Excerpt = updatedArticle.Excerpt;
-
-            // Обновляем список в HomeController
-            HomeController.SetArticles(_articles);
-
-            return RedirectToAction("Index");
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!ArticleExists(updatedArticle.Id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+            return RedirectToAction(nameof(Index));
         }
 
         return View(updatedArticle);
     }
 
-    // GET: Подтверждение удаления
-    public IActionResult Delete(int id)
+    // GET: Admin/Delete/5
+    /// <summary>
+    /// Метод для отображения страницы подтверждения удаления статьи
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
+    public async Task<IActionResult> Delete(int? id)
     {
-        var article = _articles.FirstOrDefault(a => a.Id == id);
+        if (id == null)
+        {
+            return NotFound();
+        }
+
+        var article = await _context.Articles
+            .FirstOrDefaultAsync(m => m.Id == id);
 
         if (article == null)
         {
@@ -129,21 +160,33 @@ public class AdminController : Controller
         return View(article);
     }
 
-    // POST: Удаление статьи
-    [HttpPost]
-    public IActionResult DeleteConfirmed(int id)
+    // POST: Admin/Delete/5
+    /// <summary>
+    /// Метод для обработки подтверждения удаления статьи
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
+    [HttpPost, ActionName("Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteConfirmed(int id)
     {
-        var article = _articles.FirstOrDefault(a => a.Id == id);
+        var article = await _context.Articles.FindAsync(id);
 
         if (article != null)
         {
-            // Удаляем статью
-            _articles.Remove(article);
-
-            // Обновляем список в HomeController
-            HomeController.SetArticles(_articles);
+            _context.Articles.Remove(article);
+            await _context.SaveChangesAsync();
         }
 
-        return RedirectToAction("Index");
+        return RedirectToAction(nameof(Index));
+    }
+    /// <summary>
+    /// Вспомогательный метод для проверки существования статьи по ID
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
+    private bool ArticleExists(int id)
+    {
+        return _context.Articles.Any(e => e.Id == id);
     }
 }

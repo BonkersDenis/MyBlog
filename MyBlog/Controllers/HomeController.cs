@@ -1,86 +1,65 @@
-using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
+п»їusing Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using MyBlog.Data;
 using MyBlog.Models;
-using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 
-namespace MyBlog.Controllers;
-
-public class HomeController : Controller
+namespace MyBlog.Controllers
 {
-    private readonly ILogger<HomeController> _logger;
-
-    // Статический список статей для хранения данных в памяти
-    // В реальном проекте заменили бы на базу данных
-    private static List<Article> _articles = new List<Article>
+    public class HomeController : Controller
     {
-        new Article
+        private readonly ILogger<HomeController> _logger;
+        private readonly ApplicationDbContext _context;
+
+        public HomeController(ILogger<HomeController> logger, ApplicationDbContext context)
         {
-            Id = 1,
-            Title = "Добро пожаловать в блог!",
-            Content = "Это мой первый пост в блоге. Здесь я буду делиться своими мыслями и идеями.",
-            PublishDate = DateTime.Now.AddDays(-2),
-            Excerpt = "Приветственное сообщение в блоге"
-        },
-        new Article
-        {
-            Id = 2,
-            Title = "О планах на будущее",
-            Content = "В этом блоге я планирую писать о технологиях, программировании и других интересных темах.",
-            PublishDate = DateTime.Now.AddDays(-1),
-            Excerpt = "Рассказ о планах развития блога"
+            _logger = logger;
+            _context = context;
         }
-    };
-
-    public HomeController(ILogger<HomeController> logger)
-    {
-        _logger = logger;
-    }
-
-    // Главная страница - список всех статей
-    public IActionResult Index()
-    {
-        // Сортируем статьи по дате публикации (новые сверху)
-        var articles = _articles
-            .OrderByDescending(a => a.PublishDate)
-            .ToList();
-
-        // Передаем список статей в представление
-        return View(articles);
-    }
-
-    // Страница конкретной статьи
-    public IActionResult Article(int id)
-    {
-        // Находим статью по ID
-        var article = _articles.FirstOrDefault(a => a.Id == id);
-
-        // Если статья не найдена - возвращаем 404
-        if (article == null)
+        /// <summary>
+        /// РњРµС‚РѕРґ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РіР»Р°РІРЅРѕР№ СЃС‚СЂР°РЅРёС†С‹ (СЃРїРёСЃРєР° СЃС‚Р°С‚РµР№)
+        /// </summary>
+        /// <returns></returns>
+        public async Task<IActionResult> Index()
         {
-            return NotFound();
+            var articles = await _context.Articles
+                .OrderByDescending(a => a.PublishDate)
+                .ToListAsync();
+
+            return View(articles);
         }
+        /// <summary>
+        ///  РњРµС‚РѕРґ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РєРѕРЅРєСЂРµС‚РЅРѕР№ СЃС‚Р°С‚СЊРё
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public async Task<IActionResult> Article(int id)
+        {
+            var article = await _context.Articles.FindAsync(id);
 
-        return View(article);
-    }
+            if (article == null)
+            {
+                return NotFound();
+            }
 
-    // Метод для доступа к статьям из AdminController
-    public static List<Article> GetArticles()
-    {
-        return _articles;
-    }
-
-    // Метод для обновления списка статей из AdminController
-    public static void SetArticles(List<Article> articles)
-    {
-        _articles = articles;
-    }
-
-   
-
-    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public IActionResult Error()
-    {
-        return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            return View(article);
+        }
+        /// <summary>
+        /// РњРµС‚РѕРґ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ СЃС‚СЂР°РЅРёС†С‹ РєРѕРЅС„РёРґРµРЅС†РёР°Р»СЊРЅРѕСЃС‚Рё
+        /// </summary>
+        /// <returns></returns>
+        public IActionResult Privacy()
+        {
+            return View();
+        }
+        /// <summary>
+        /// РњРµС‚РѕРґ РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё РѕС€РёР±РѕРє
+        /// </summary>
+        /// <returns></returns>
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Error()
+        {
+            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
     }
 }
