@@ -1,27 +1,41 @@
 ﻿@model MyBlog.Models.Article
 
-<h1>Редактировать статью</h1>
+@{
+    ViewData["Title"] = "Редактирование статьи";
+}
 
-<form action="/Admin/Edit" method="post">
-    <input type="hidden" name="Id" value="@Model.Id">
+<h1>Редактирование статьи</h1>
+
+<form asp-action="Edit">
+    <input type="hidden" asp-for="Id" />
+
+    <div asp-validation-summary="ModelOnly"></div>
 
     <div>
-        <label>Заголовок:</label><br>
-        <input type="text" name="Title" value="@Model.Title" style="width: 300px;" required>
+        <label asp-for="Title"></label>
+        <input asp-for="Title" />
+        <span asp-validation-for="Title"></span>
     </div>
 
-    <div style="margin-top: 10px;">
-        <label>Краткое описание:</label><br>
-        <textarea name="Excerpt" rows="3" style="width: 300px;">@Model.Excerpt</textarea>
+    <div>
+        <label asp-for="Excerpt"></label>
+        <textarea asp-for="Excerpt"></textarea>
+        <span asp-validation-for="Excerpt"></span>
     </div>
 
-    <div style="margin-top: 10px;">
-        <label>Текст статьи:</label><br>
-        <textarea name="Content" rows="10" style="width: 300px;" required>@Model.Content</textarea>
+    <div>
+        <label asp-for="Content"></label>
+        <textarea asp-for="Content"></textarea>
+        <span asp-validation-for="Content"></span>
     </div>
 
-    <div style="margin-top: 20px;">
-        <button type="submit">Сохранить</button>
-        <a href="/Admin" style="margin-left: 10px;">Отмена</a>
+    <div>
+        <label asp-for="PublishDate"></label>
+        <input asp-for="PublishDate" type="datetime-local" />
+        <span asp-validation-for="PublishDate"></span>
     </div>
+
+    <button type="submit">Сохранить</button>
 </form>
+
+<a asp-action="Index">Назад к списку</a>

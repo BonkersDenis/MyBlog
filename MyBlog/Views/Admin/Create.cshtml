@@ -1,23 +1,33 @@
-﻿<h1>Создать статью</h1>
+﻿@model MyBlog.Models.Article
 
-<form action="/Admin/Create" method="post">
+@{
+    ViewData["Title"] = "Создание статьи";
+}
+
+<h1>Создание статьи</h1>
+
+<form asp-action="Create">
+    <div asp-validation-summary="ModelOnly"></div>
+
     <div>
-        <label>Заголовок:</label><br>
-        <input type="text" name="Title" style="width: 300px;" required>
+        <label asp-for="Title"></label>
+        <input asp-for="Title" />
+        <span asp-validation-for="Title"></span>
     </div>
 
-    <div style="margin-top: 10px;">
-        <label>Краткое описание:</label><br>
-        <textarea name="Excerpt" rows="3" style="width: 300px;"></textarea>
+    <div>
+        <label asp-for="Excerpt"></label>
+        <textarea asp-for="Excerpt"></textarea>
+        <span asp-validation-for="Excerpt"></span>
     </div>
 
-    <div style="margin-top: 10px;">
-        <label>Текст статьи:</label><br>
-        <textarea name="Content" rows="10" style="width: 300px;" required></textarea>
+    <div>
+        <label asp-for="Content"></label>
+        <textarea asp-for="Content"></textarea>
+        <span asp-validation-for="Content"></span>
     </div>
 
-    <div style="margin-top: 20px;">
-        <button type="submit">Создать</button>
-        <a href="/Admin" style="margin-left: 10px;">Отмена</a>
-    </div>
+    <button type="submit">Создать</button>
 </form>
+
+<a asp-action="Index">Назад к списку</a>
