@@ -2,6 +2,8 @@
 using MyBlog.Models;
 using Microsoft.EntityFrameworkCore;
 using MyBlog.Data;
+using MyBlog.Interfaces.Services;
+using MyBlog.Models.DTOs;
 
 namespace MyBlog.Controllers;
 
@@ -22,171 +24,210 @@ namespace MyBlog.Controllers;
 
 public class AdminController : Controller
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IArticleService _articleService;
+    private readonly ILogger<AdminController> _logger;
 
-    public AdminController(ApplicationDbContext context)
+    public AdminController(IArticleService articleService, ILogger<AdminController> logger)
     {
-        _context = context;
+        _articleService = articleService ?? throw new ArgumentNullException(nameof(articleService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    // GET: Admin
-    /// <summary>
-    /// Основная страница административной панели - отображает список всех статей
-    /// </summary>
-    /// <returns></returns>
     public async Task<IActionResult> Index()
     {
-        var articles = await _context.Articles
-            .OrderByDescending(a => a.PublishDate)
-            .ToListAsync();
+        _logger.LogInformation("Администратор зашел в панель управления");
 
-        return View(articles);
+        try
+        {
+            var articles = await _articleService.GetAllArticlesAsync();
+            _logger.LogDebug($"Получено {articles.Count()} статей для отображения");
+
+            return View(articles);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при получении списка статей");
+            return View("Error", new { message = "Не удалось загрузить список статей" });
+        }
     }
 
-    // GET: Admin/Create
-    /// <summary>
-    /// Метод для отображения формы создания новой статьи
-    /// </summary>
-    /// <returns></returns>
     public IActionResult Create()
     {
-        return View();
+        _logger.LogInformation("Отображение формы создания статьи");
+        return View(new CreateArticleDto());
     }
 
-    // POST: Admin/Create
-    /// <summary>
-    /// Метод для обработки данных из формы создания статьи
-    /// </summary>
-    /// <param name="article"></param>
-    /// <returns></returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(Article article)
+    public async Task<IActionResult> Create(CreateArticleDto createDto)
     {
-        if (ModelState.IsValid)
+        _logger.LogInformation($"Попытка создания статьи: {createDto.Title}");
+
+        if (!ModelState.IsValid)
         {
-            _context.Add(article);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            _logger.LogWarning("Невалидные данные при создании статьи");
+            return View(createDto);
         }
 
-        return View(article);
+        try
+        {
+            var createdArticle = await _articleService.CreateArticleAsync(createDto);
+
+            _logger.LogInformation($"Статья создана успешно. ID: {createdArticle.Id}");
+
+            TempData["SuccessMessage"] = $"Статья '{createdArticle.Title}' успешно создана!";
+
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при создании статьи");
+
+            ModelState.AddModelError(string.Empty, "Произошла ошибка при создании статьи. Пожалуйста, попробуйте еще раз.");
+
+            return View(createDto);
+        }
     }
 
-    // GET: Admin/Edit/5
-    /// <summary>
-    /// Метод для отображения формы редактирования существующей статьи
-    /// </summary>
-    /// <param name="id"></param>
-    /// <returns></returns>
     public async Task<IActionResult> Edit(int? id)
     {
         if (id == null)
         {
+            _logger.LogWarning("Попытка редактирования статьи без указания ID");
             return NotFound();
         }
 
-        var article = await _context.Articles.FindAsync(id);
+        _logger.LogInformation($"Запрос на редактирование статьи с ID: {id}");
 
-        if (article == null)
+        try
         {
-            return NotFound();
-        }
+            var article = await _articleService.GetArticleByIdAsync(id.Value);
 
-        return View(article);
+            if (article == null)
+            {
+                _logger.LogWarning($"Статья с ID {id} не найдена для редактирования");
+                return NotFound();
+            }
+
+            // Создаем UpdateArticleDto без PublishDate, если оно не нужно
+            var updateDto = new UpdateArticleDto
+            {
+                Id = article.Id,
+                Title = article.Title,
+                Content = article.Content,
+                Excerpt = article.Excerpt,
+                IsPublished = article.IsPublished
+                // PublishDate убрали, если не хотим редактировать
+            };
+
+            // Если нужно показывать дату, но не редактировать
+            ViewBag.OriginalPublishDate = article.PublishDate.ToString("dd.MM.yyyy HH:mm");
+
+            return View(updateDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Ошибка при получении статьи с ID {id} для редактирования");
+            return View("Error", new { message = "Не удалось загрузить статью для редактирования" });
+        }
     }
 
-    // POST: Admin/Edit/5
-    /// <summary>
-    /// Метод для обработки данных из формы редактирования статьи
-    /// </summary>
-    /// <param name="id"></param>
-    /// <param name="updatedArticle"></param>
-    /// <returns></returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, Article updatedArticle)
+    public async Task<IActionResult> Edit(int id, UpdateArticleDto updateDto)
     {
-        if (id != updatedArticle.Id)
+        _logger.LogInformation($"Попытка обновления статьи с ID: {id}");
+
+        if (id != updateDto.Id)
         {
+            _logger.LogWarning($"Несоответствие ID: маршрут={id}, DTO={updateDto.Id}");
             return NotFound();
         }
 
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
         {
-            try
-            {
-                _context.Update(updatedArticle);
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ArticleExists(updatedArticle.Id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-            return RedirectToAction(nameof(Index));
+            _logger.LogWarning("Невалидные данные при обновлении статьи");
+            return View(updateDto);
         }
 
-        return View(updatedArticle);
+        try
+        {
+            await _articleService.UpdateArticleAsync(updateDto);
+
+            _logger.LogInformation($"Статья с ID {id} успешно обновлена");
+
+            TempData["SuccessMessage"] = $"Статья '{updateDto.Title}' успешно обновлена!";
+
+            return RedirectToAction(nameof(Index));
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, $"Статья с ID {id} не найдена для обновления");
+            ModelState.AddModelError(string.Empty, "Статья не найдена. Возможно, она была удалена.");
+            return View(updateDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Ошибка при обновлении статьи с ID {id}");
+
+            ModelState.AddModelError(string.Empty, "Произошла ошибка при обновлении статьи. Пожалуйста, попробуйте еще раз.");
+
+            return View(updateDto);
+        }
     }
 
-    // GET: Admin/Delete/5
-    /// <summary>
-    /// Метод для отображения страницы подтверждения удаления статьи
-    /// </summary>
-    /// <param name="id"></param>
-    /// <returns></returns>
     public async Task<IActionResult> Delete(int? id)
     {
         if (id == null)
         {
+            _logger.LogWarning("Попытка удаления статьи без указания ID");
             return NotFound();
         }
 
-        var article = await _context.Articles
-            .FirstOrDefaultAsync(m => m.Id == id);
+        _logger.LogInformation($"Запрос на удаление статьи с ID: {id}");
 
-        if (article == null)
+        try
         {
-            return NotFound();
-        }
+            var article = await _articleService.GetArticleByIdAsync(id.Value);
 
-        return View(article);
+            if (article == null)
+            {
+                _logger.LogWarning($"Статья с ID {id} не найдена для удаления");
+                return NotFound();
+            }
+
+            return View(article);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Ошибка при получении статьи с ID {id} для удаления");
+            return View("Error", new { message = "Не удалось загрузить статью для удаления" });
+        }
     }
 
-    // POST: Admin/Delete/5
-    /// <summary>
-    /// Метод для обработки подтверждения удаления статьи
-    /// </summary>
-    /// <param name="id"></param>
-    /// <returns></returns>
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
-        var article = await _context.Articles.FindAsync(id);
+        _logger.LogInformation($"Подтверждение удаления статьи с ID: {id}");
 
-        if (article != null)
+        try
         {
-            _context.Articles.Remove(article);
-            await _context.SaveChangesAsync();
-        }
+            await _articleService.DeleteArticleAsync(id);
 
-        return RedirectToAction(nameof(Index));
-    }
-    /// <summary>
-    /// Вспомогательный метод для проверки существования статьи по ID
-    /// </summary>
-    /// <param name="id"></param>
-    /// <returns></returns>
-    private bool ArticleExists(int id)
-    {
-        return _context.Articles.Any(e => e.Id == id);
+            _logger.LogInformation($"Статья с ID {id} успешно удалена");
+
+            TempData["SuccessMessage"] = "Статья успешно удалена!";
+
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Ошибка при удалении статьи с ID {id}");
+
+            TempData["ErrorMessage"] = "Произошла ошибка при удалении статьи. Пожалуйста, попробуйте еще раз.";
+
+            return RedirectToAction(nameof(Index));
+        }
     }
 }

@@ -1,6 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MyBlog.Data;
-using MyBlog.Models;
+using MyBlog.Interfaces.Services;
+using MyBlog.Services;
+using MyBlog.Models.Entities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MyBlog
 {
@@ -16,6 +19,9 @@ namespace MyBlog
             // Добавляем контекст базы данных
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            // Регистрируем сервисы через интерфейсы
+            builder.Services.AddScoped<IArticleService, ArticleService>();
 
             var app = builder.Build();
 
@@ -35,31 +41,47 @@ namespace MyBlog
             using (var scope = app.Services.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                dbContext.Database.EnsureCreated();
+
+                // Применяем миграции автоматически
+                dbContext.Database.Migrate();
 
                 // Если таблица Articles пуста, добавляем тестовые данные
                 if (!dbContext.Articles.Any())
                 {
-                    dbContext.Articles.AddRange(
-                        new Article
-                        {
-                            Title = "Добро пожаловать в блог!",
-                            Content = "Это мой первый пост в блоге. Здесь я буду делиться своими мыслями и идеями.",
-                            Excerpt = "Приветственное сообщение в блоге",
-                            PublishDate = DateTime.Now.AddDays(-2)
-                        },
-                        new Article
-                        {
-                            Title = "О планах на будущее",
-                            Content = "В этом блоге я планирую писать о технологиях, программировании и других интересных темах.",
-                            Excerpt = "Рассказ о планах развития блога",
-                            PublishDate = DateTime.Now.AddDays(-1)
-                        }
-                    );
+                    // Используем доменные модели для создания тестовых статей
+                    var articles = new List<Article>
+                    {
+                        // Используем конструктор доменной модели
+                        new Article(
+                            title: "Добро пожаловать в блог!",
+                            content: "Это мой первый пост в блоге. Здесь я буду делиться своими мыслями и идеями.",
+                            excerpt: "Приветственное сообщение в блоге"
+                        ),
+                        new Article(
+                            title: "О планах на будущее",
+                            content: "В этом блоге я планирую писать о технологиях, программировании и других интересных темах.",
+                            excerpt: "Рассказ о планах развития блога"
+                        ),
+                        new Article(
+                            title: "Основы ASP.NET Core",
+                            content: "ASP.NET Core - это кроссплатформенный фреймворк для создания веб-приложений.",
+                            excerpt: "Введение в ASP.NET Core для начинающих"
+                        )
+                    };
+
+                    // Добавляем статьи в контекст
+                    dbContext.Articles.AddRange(articles);
+
+                    // Сохраняем изменения
                     dbContext.SaveChanges();
+
+                    // Логируем создание тестовых данных
+                    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+                    logger.LogInformation("Добавлены тестовые статьи в базу данных");
                 }
             }
 
+            // Настраиваем маршруты
             app.MapControllerRoute(
                 name: "article",
                 pattern: "article/{id}",

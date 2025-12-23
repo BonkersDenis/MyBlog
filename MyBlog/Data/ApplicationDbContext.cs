@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using MyBlog.Models;
+using MyBlog.Models.Entities;
 
 namespace MyBlog.Data
 {
@@ -11,27 +11,67 @@ namespace MyBlog.Data
         }
 
         public DbSet<Article> Articles { get; set; }
+        public DbSet<Comment> Comments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Настройка статьи
+            // Конфигурация для Article
             modelBuilder.Entity<Article>(entity =>
             {
-                entity.Property(a => a.Title)
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Title)
                     .IsRequired()
                     .HasMaxLength(200);
 
-                entity.Property(a => a.Content)
+                entity.Property(e => e.Content)
                     .IsRequired();
 
-                entity.Property(a => a.Excerpt)
+                entity.Property(e => e.Excerpt)
                     .HasMaxLength(500);
 
-                entity.Property(a => a.PublishDate)
+                entity.Property(e => e.PublishDate)
                     .HasColumnType("datetime")
                     .HasDefaultValueSql("GETDATE()");
+
+                entity.Property(e => e.IsPublished)
+                    .HasDefaultValue(true);
+
+                entity.HasIndex(e => e.PublishDate);
+                entity.HasIndex(e => e.IsPublished);
+            });
+
+            // Конфигурация для Comment
+            modelBuilder.Entity<Comment>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.AuthorName)
+                    .IsRequired()
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.Content)
+                    .IsRequired()
+                    .HasMaxLength(1000);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnType("datetime")
+                    .HasDefaultValueSql("GETDATE()");
+
+                entity.Property(e => e.IsApproved)
+                    .HasDefaultValue(false);
+
+                // Связь с Article
+                entity.HasOne(e => e.Article)
+                    .WithMany()
+                    .HasForeignKey(e => e.ArticleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.ArticleId);
+                entity.HasIndex(e => e.IsApproved);
+                entity.HasIndex(e => e.CreatedDate);
             });
         }
     }
