@@ -3,25 +3,18 @@ using MyBlog.Models;
 using Microsoft.EntityFrameworkCore;
 using MyBlog.Data;
 using MyBlog.Interfaces.Services;
-using MyBlog.Models.DTOs;
+using MyBlog.Requests;
 
 namespace MyBlog.Controllers;
 
 //TODO: Сделать две ветки. Одну - для фронта, вторую - для бэка. По результату смерджить их в main.
 
-//TODO: Поправить стиль кода(переименовать метод).
 //TODO: Добавить во все эндпоинты тип Http-запроса.
 //TODO: Используй Summary стиль документации.
-//TODO: Внедрить ef-core.
-//TODO: Создать отдельные "доменные" модели.
-//TODO: Нужно выделить репозиторий в HomeController. ArticleRepository будет заниматься получением/записью в бд через ef core.
-//TODO: Нужно выделить сервисы. ArticleService будет заниматься бизнес логикой(созданием и редактированием статей)
-//внедрить сервис в контроллеры.
 
 //TODO: Добавить на форму результат валидации.
 //TODO: Сделать в формах нормальный modelBinding(использовать @model вместо биндинга по name).
 //TODO: В формах использовать asp-for вместо не прямого указания эндпоинтов.
-
 public class AdminController : Controller
 {
     private readonly IArticleService _articleService;
@@ -51,15 +44,16 @@ public class AdminController : Controller
         }
     }
 
+    [HttpGet]
     public IActionResult Create()
     {
         _logger.LogInformation("Отображение формы создания статьи");
-        return View(new CreateArticleDto());
+        return View(new CreateArticleRequest());
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(CreateArticleDto createDto)
+    public async Task<IActionResult> Create(CreateArticleRequest createDto)
     {
         _logger.LogInformation($"Попытка создания статьи: {createDto.Title}");
 
@@ -75,6 +69,7 @@ public class AdminController : Controller
 
             _logger.LogInformation($"Статья создана успешно. ID: {createdArticle.Id}");
 
+            //TODO: Разобраться как работает TempData
             TempData["SuccessMessage"] = $"Статья '{createdArticle.Title}' успешно создана!";
 
             return RedirectToAction(nameof(Index));
@@ -89,7 +84,7 @@ public class AdminController : Controller
         }
     }
 
-    public async Task<IActionResult> Edit(int? id)
+    public async Task<IActionResult> Edit(int? id, CancellationToken cancellationToken)
     {
         if (id == null)
         {
@@ -101,7 +96,7 @@ public class AdminController : Controller
 
         try
         {
-            var article = await _articleService.GetArticleByIdAsync(id.Value);
+            var article = await _articleService.GetArticleByIdAsync(id.Value, cancellationToken);
 
             if (article == null)
             {
@@ -110,7 +105,7 @@ public class AdminController : Controller
             }
 
             // Создаем UpdateArticleDto без PublishDate, если оно не нужно
-            var updateDto = new UpdateArticleDto
+            var updateDto = new UpdateArticleRequest
             {
                 Id = article.Id,
                 Title = article.Title,
@@ -134,7 +129,7 @@ public class AdminController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, UpdateArticleDto updateDto)
+    public async Task<IActionResult> Edit(int id, UpdateArticleRequest updateDto)
     {
         _logger.LogInformation($"Попытка обновления статьи с ID: {id}");
 
@@ -176,7 +171,7 @@ public class AdminController : Controller
         }
     }
 
-    public async Task<IActionResult> Delete(int? id)
+    public async Task<IActionResult> Delete(int? id, CancellationToken cancellation)
     {
         if (id == null)
         {
@@ -188,7 +183,7 @@ public class AdminController : Controller
 
         try
         {
-            var article = await _articleService.GetArticleByIdAsync(id.Value);
+            var article = await _articleService.GetArticleByIdAsync(id.Value, cancellation);
 
             if (article == null)
             {

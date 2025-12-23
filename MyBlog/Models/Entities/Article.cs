@@ -8,6 +8,12 @@ namespace MyBlog.Models.Entities
     /// Доменная модель статьи - основная бизнес-сущность
     /// Отвечает за бизнес-логику и правила домена
     /// </summary>
+    //TODO: Разобраться чем отличается rich-domain-model от anemic-domain-model
+    //TODO: Убрать мертвый код
+    //TODO: Подумать нужен ли IsPublished в бд.
+    //TODO: Ибавиться от data-анотаций ef-core
+    //TODO: Добавить summary
+
     public class Article
     {
         [Key]

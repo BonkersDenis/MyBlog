@@ -8,6 +8,7 @@ using MyBlog.Data;
 using MyBlog.Interfaces.Services;
 using MyBlog.Models.Entities;
 using MyBlog.Models.DTOs;
+using MyBlog.Requests;
 
 namespace MyBlog.Services
 {
@@ -15,6 +16,9 @@ namespace MyBlog.Services
     /// Реализация сервиса для работы со статьями
     /// Наследует интерфейс IArticleService
     /// </summary>
+    // TODO: Добавить summary
+    // TODO: Удалить мертвый код
+    // TODO: Заменить контекст на репозиторий 
     public class ArticleService : IArticleService
     {
         private readonly ApplicationDbContext _context;
@@ -31,11 +35,14 @@ namespace MyBlog.Services
             _logger = logger;
         }
 
-        public async Task<ArticleDto> GetArticleByIdAsync(int id)
+        public async Task<ArticleDto> GetArticleByIdAsync(int id, CancellationToken cancellationToken)
         {
             _logger.LogInformation($"Получение статьи по ID: {id}");
 
-            var article = await _context.Articles.FindAsync(id);
+            var article = await _context.Articles.FirstOrDefaultAsync(article => article.Id == id, cancellationToken);
+
+            if (cancellationToken.IsCancellationRequested)
+                return null;
 
             if (article == null)
             {
@@ -92,7 +99,7 @@ namespace MyBlog.Services
             return articles.Select(MapToDto);
         }
 
-        public async Task<ArticleDto> CreateArticleAsync(CreateArticleDto createDto)
+        public async Task<ArticleDto> CreateArticleAsync(CreateArticleRequest createDto)
         {
             _logger.LogInformation($"Создание новой статьи: {createDto.Title}");
 
@@ -116,7 +123,7 @@ namespace MyBlog.Services
             }
         }
 
-        public async Task UpdateArticleAsync(UpdateArticleDto updateDto)
+        public async Task UpdateArticleAsync(UpdateArticleRequest updateDto)
         {
             _logger.LogInformation($"Обновление статьи ID: {updateDto.Id}");
 
@@ -218,15 +225,17 @@ namespace MyBlog.Services
         /// </summary>
         private ArticleDto MapToDto(Article article)
         {
-            return new ArticleDto
-            {
-                Id = article.Id,
-                Title = article.Title,
-                Content = article.Content,
-                Excerpt = article.Excerpt,
-                PublishDate = article.PublishDate,
-                IsPublished = article.IsPublished
-            };
+            return new ArticleDto(article);
+
+            //return new ArticleDto
+            //{
+            //    Id = 1,
+            //    Title = article.Title,
+            //    Content = article.Content,
+            //    Excerpt = article.Excerpt,
+            //    PublishDate = article.PublishDate,
+            //    IsPublished = article.IsPublished
+            //};
         }
 
         /// <summary>

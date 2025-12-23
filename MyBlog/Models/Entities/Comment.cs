@@ -2,6 +2,9 @@
 
 namespace MyBlog.Models.Entities
 {
+    /// <summary>
+    /// Добавить summary
+    /// </summary>
     public class Comment
     {
         public int Id { get; private set; }

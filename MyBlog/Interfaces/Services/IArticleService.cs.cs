@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using MyBlog.Models.DTOs;
+using MyBlog.Requests;
 
 namespace MyBlog.Interfaces.Services
 {
@@ -8,6 +9,8 @@ namespace MyBlog.Interfaces.Services
     /// Интерфейс для сервиса работы со статьями
     /// Определяет контракт, который должен реализовать ArticleService
     /// </summary>
+    // TODO: Добавить CancellationToken во все асинхронные операции
+    // TODO: Удалить мертвый код
     public interface IArticleService
     {
         /// <summary>
@@ -15,7 +18,7 @@ namespace MyBlog.Interfaces.Services
         /// </summary>
         /// <param name="id">Идентификатор статьи</param>
         /// <returns>DTO статьи или null, если статья не найдена</returns>
-        Task<ArticleDto> GetArticleByIdAsync(int id);
+        Task<ArticleDto> GetArticleByIdAsync(int id, CancellationToken cancellationToken);
 
         /// <summary>
         /// Получить все опубликованные статьи
@@ -42,14 +45,14 @@ namespace MyBlog.Interfaces.Services
         /// </summary>
         /// <param name="createDto">DTO с данными для создания статьи</param>
         /// <returns>DTO созданной статьи</returns>
-        Task<ArticleDto> CreateArticleAsync(CreateArticleDto createDto);
+        Task<ArticleDto> CreateArticleAsync(CreateArticleRequest createDto);
 
         /// <summary>
         /// Обновить существующую статью
         /// </summary>
         /// <param name="updateDto">DTO с данными для обновления</param>
         /// <exception cref="ArgumentException">Выбрасывается, если статья не найдена</exception>
-        Task UpdateArticleAsync(UpdateArticleDto updateDto);
+        Task UpdateArticleAsync(UpdateArticleRequest updateDto);
 
         /// <summary>
         /// Удалить статью по идентификатору
